@@ -11,7 +11,9 @@ class PirateChatbot:
         self.tokenizer = None
         
         self.download_model(local_dir=local_dir)
-        self.load_model()
+
+        if self.pipe is None:
+            self.load_model()
 
     def download_model(self, local_dir="llm_weights"):
         self.model_file = snapshot_download(
@@ -31,12 +33,11 @@ class PirateChatbot:
                 "quantization_config": {"load_in_4bit": True},
             },
         )
-        self.tokenizer = self.pipe.tokenizer
 
     def generate_response(self, messages, max_new_tokens=256, temperature=0.6, top_p=0.9):
         terminators = [
-            self.tokenizer.eos_token_id,
-            self.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+            self.pipe.tokenizer.eos_token_id,
+            self.pipe.tokenizer.convert_tokens_to_ids("<|eot_id|>")
         ]
 
         outputs = self.pipe(
