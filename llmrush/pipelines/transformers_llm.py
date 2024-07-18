@@ -2,14 +2,17 @@ import torch
 from huggingface_hub import snapshot_download
 from transformers import pipeline
 
+
 class PirateChatbot:
-    def __init__(self, model_id="meta-llama/Meta-Llama-3-8B-Instruct", token="hf_token", local_dir="llm_weights"):
+
+    def __init__(
+            self, model_id="meta-llama/Meta-Llama-3-8B-Instruct", token="hf_token", local_dir="llm_weights"):
         self.model_id = model_id
         self.token = token
         self.model_file = None
         self.pipe = None
         self.tokenizer = None
-        
+
         self.download_model(local_dir=local_dir)
 
         if self.pipe is None:
@@ -30,7 +33,9 @@ class PirateChatbot:
             model=self.model_file,
             model_kwargs={
                 "torch_dtype": torch.float16,
-                "quantization_config": {"load_in_4bit": True},
+                "quantization_config": {
+                    "load_in_4bit": True
+                },
             },
         )
 
@@ -52,7 +57,13 @@ class PirateChatbot:
 
     def chat(self, user_input):
         messages = [
-            {"role": "system", "content": "You are a pirate chatbot who always responds in pirate speak!"},
-            {"role": "user", "content": user_input},
+            {
+                "role": "system",
+                "content": "You are a pirate chatbot who always responds in pirate speak!"
+            },
+            {
+                "role": "user",
+                "content": user_input
+            },
         ]
         return self.generate_response(messages)
