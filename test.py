@@ -1,24 +1,21 @@
 from typing import List, Optional
+
 from llama_cpp import Llama
 
+
 class GemmaModel:
-    """
-    A wrapper class for the Gemma language model using llama_cpp.
-    """
+    """A wrapper class for the Gemma language model using llama_cpp."""
 
     def __init__(self):
-        """
-        Initialize the GemmaModel class.
-        """
+        """Initialize the GemmaModel class."""
         self.llm = None
 
     def load_model(
-        self,
-        model_path: str,
-        n_gpu_layers: int = -1,
-        seed: Optional[int] = None,
-        n_ctx: int = 2048
-    ) -> None:
+            self,
+            model_path: str,
+            n_gpu_layers: int = -1,
+            seed: Optional[int] = None,
+            n_ctx: int = 2048) -> None:
         """
         Load the Gemma model with specified parameters.
 
@@ -28,20 +25,14 @@ class GemmaModel:
             seed (Optional[int]): Seed for random number generation. Defaults to None.
             n_ctx (int): Size of the context window. Defaults to 2048.
         """
-        self.llm = Llama(
-            model_path=model_path,
-            n_gpu_layers=n_gpu_layers,
-            seed=seed,
-            n_ctx=n_ctx
-        )
+        self.llm = Llama(model_path=model_path, n_gpu_layers=n_gpu_layers, seed=seed, n_ctx=n_ctx)
 
     def generate(
-        self,
-        prompt: str,
-        max_tokens: Optional[int] = None,
-        stop: Optional[List[str]] = None,
-        echo: bool = False
-    ) -> dict:
+            self,
+            prompt: str,
+            max_tokens: Optional[int] = None,
+            stop: Optional[List[str]] = None,
+            echo: bool = False) -> dict:
         """
         Generate text based on the given prompt.
 
@@ -60,30 +51,17 @@ class GemmaModel:
         if self.llm is None:
             raise ValueError("Model not loaded. Call load_model() first.")
 
-        return self.llm(
-            prompt,
-            max_tokens=max_tokens,
-            stop=stop,
-            echo=echo
-        )
+        return self.llm(prompt, max_tokens=max_tokens, stop=stop, echo=echo)
+
 
 # Create an instance of the GemmaModel
 gemma = GemmaModel()
 
 # Load the model
-gemma.load_model(
-    model_path="Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf",
-    n_gpu_layers=100,
-    seed=1337,
-    n_ctx=2048
-)
+gemma.load_model(model_path="Meta-Llama-3.1-8B-Instruct-Q5_K_M.gguf", n_gpu_layers=100, seed=1337, n_ctx=2048)
 
 # Generate text
 output = gemma.generate(
-    prompt="Q: Name the planets in the solar system? A: ",
-    max_tokens=128,
-    stop=["Q:", "\n"],
-    echo=True
-)
+    prompt="Q: Name the planets in the solar system? A: ", max_tokens=128, stop=["Q:", "\n"], echo=True)
 
 print(output)
