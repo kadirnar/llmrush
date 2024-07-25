@@ -1,126 +1,115 @@
-import os
-import time
-import warnings
+from typing import Optional
 
-import GPUtil
 import torch
-from colorama import Fore, Style, init
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-
-# Suppress warnings
-os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
-os.environ['TOKENIZERS_PARALLELISM'] = 'false'
-warnings.filterwarnings("ignore", category=UserWarning)
-
-# Initialize colorama for cross-platform colored terminal output
-init()
+from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-class LLMInference:
+class TransformerTextGenerator:
+    """
+    A class to handle text generation using the Transformers library with LoRA support.
+
+    This class provides functionality to load a specified model with an optional LoRA adapter and generate
+    text responses.
+    """
 
     def __init__(
-            self, model_name: str, gpu_ids: list = [0], use_4bit: bool = True, max_new_tokens: int = 100):
-        self.model_name = model_name
-        self.gpu_ids = gpu_ids
-        self.use_4bit = use_4bit
-        self.max_new_tokens = max_new_tokens
+            self,
+            model_id: str = "meta-llama/Meta-Llama-3-8B-Instruct",
+            load_in_4bit: bool = False,
+            low_cpu_mem: bool = False,
+            lora_path: Optional[str] = None):
+        """
+        Initialize the TransformerTextGenerator with a specified model and optional LoRA adapter.
 
-        self.load_model()
+        Args:
+            model_id (str): The identifier of the model to use.
+            load_in_4bit (bool): Whether to load the model in 4-bit precision.
+            low_cpu_mem (bool): Whether to use low CPU memory usage.
+            lora_path (Optional[str]): Path to a pre-trained LoRA adapter.
+        """
+        self.model_id: str = model_id
+        self.model = None
+        self.tokenizer = None
+        self.load_in_4bit = load_in_4bit
+        self.low_cpu_mem = low_cpu_mem
+        self.lora_path = lora_path
 
-    def load_model(self):
-        if torch.cuda.is_available() and self.gpu_ids:
-            self.device = torch.device(f'cuda:{self.gpu_ids[0]}')
-        else:
-            self.device = torch.device('cpu')
-            print(f"{Fore.YELLOW}Using CPU for inference.{Style.RESET_ALL}")
+        self._load_model()
 
-        # Configure quantization
-        quantization_config = BitsAndBytesConfig(
-            load_in_4bit=self.use_4bit, bnb_4bit_compute_dtype=torch.float16)
+    def _load_model(self) -> None:
+        """
+        Load the language model, tokenizer, and LoRA adapter if specified.
 
-        # Suppress stdout temporarily
-        with open(os.devnull, 'w') as devnull:
-            old_stdout = os.dup(1)
-            os.dup2(devnull.fileno(), 1)
-            try:
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    self.model_name,
-                    device_map=self.device,
-                    quantization_config=quantization_config,
-                    torch_dtype=torch.float16)
-                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            finally:
-                os.dup2(old_stdout, 1)
+        This method initializes the model with bfloat16 precision and loads the LoRA adapter if a path is
+        provided.
+        """
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
 
-        if len(self.gpu_ids) > 1:
-            self.model = torch.nn.DataParallel(self.model, device_ids=self.gpu_ids)
+        model_kwargs = {"torch_dtype": torch.bfloat16, "low_cpu_mem_usage": self.low_cpu_mem}
 
-        # Set pad_token_id if it's not set
-        if self.tokenizer.pad_token_id is None:
-            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+        if self.load_in_4bit:
+            from transformers import BitsAndBytesConfig
+            quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+            model_kwargs["quantization_config"] = quantization_config
 
-        self.log_gpu_memory()
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_id, **model_kwargs)
 
-    def log_gpu_memory(self):
-        if torch.cuda.is_available():
-            gpus = GPUtil.getGPUs()
-            for gpu_id in self.gpu_ids:
-                gpu = gpus[gpu_id]
-                print(
-                    f"{Fore.MAGENTA}GPU {gpu_id} VRAM: {gpu.memoryUsed:.2f} MB / {gpu.memoryTotal:.2f} MB{Style.RESET_ALL}"
-                )
+        if self.lora_path:
+            self.model = PeftModel.from_pretrained(self.model, self.lora_path)
 
-    def generate_response(self,
-                          system_prompt: str,
-                          user_prompt: str,
-                          do_sample: bool = True) -> tuple[str, float]:
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+    def __call__(
+            self,
+            system_prompt: str,
+            user_prompt: str,
+            max_new_tokens: int = 256,
+            temperature: float = 0.6,
+            top_p: float = 0.9) -> str:
+        """
+        Generate a text response based on the system and user prompts.
 
-        inputs = self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt")
-        input_ids = inputs.to(self.device)
+        Args:
+            system_prompt (str): The system prompt to set the context.
+            user_prompt (str): The user's input prompt.
+            max_new_tokens (int, optional): Maximum number of new tokens to generate. Defaults to 256.
+            temperature (float, optional): Controls randomness in generation. Higher values make output more random. Defaults to 0.6.
+            top_p (float, optional): Controls diversity of generated tokens. Defaults to 0.9.
 
-        # Create attention mask
-        attention_mask = torch.ones_like(input_ids)
-        attention_mask[input_ids == self.tokenizer.pad_token_id] = 0
+        Returns:
+            str: The generated text response.
+        """
+        if self.model is None or self.tokenizer is None:
+            raise ValueError("Model or tokenizer not loaded. There was an error during initialization.")
 
-        input_length = input_ids.shape[1]
+        prompt = f"System: {system_prompt}\nHuman: {user_prompt}\nAssistant:"
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
 
-        start_time = time.time()
         with torch.no_grad():
-            generated_ids = self.model.generate(
-                input_ids,
-                attention_mask=attention_mask,
-                do_sample=do_sample,
-                max_new_tokens=self.max_new_tokens,
-                pad_token_id=self.tokenizer.pad_token_id,
-                eos_token_id=self.tokenizer.eos_token_id)
-        end_time = time.time()
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=temperature,
+                top_p=top_p,
+            )
 
-        response = self.tokenizer.decode(generated_ids[0, input_length:], skip_special_tokens=True)
-
-        num_tokens = len(generated_ids[0]) - input_length
-        time_taken = end_time - start_time
-        tokens_per_second = num_tokens / time_taken
-
-        return response, tokens_per_second
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 
-# Usage example
+# Example usage:
 if __name__ == "__main__":
-    model_name = "llama-3-8b-Instruct-bnb-4bit"
-    gpu_ids = [0]  # Use GPUs 2 and 3. Modify as needed.
-    llm = LLMInference(model_name=model_name, gpu_ids=gpu_ids, use_4bit=True)
+    generator = TransformerTextGenerator(
+        model_id="/mnt/adllm/models/Meta-Llama-3.1-8B-Instruct",
+        load_in_4bit=True,
+        low_cpu_mem=True,
+        lora_path="/home/kadir/adllm/outputs/lora-out/")
 
-    while True:
-        system_prompt = input(f"\n{Fore.BLUE}Enter system prompt (or 'quit' to exit): {Style.RESET_ALL}")
-        if system_prompt.lower() == 'quit':
-            break
+    system_prompt = """
+    You are a helpful ad copywriting assistant. You will take the user input and write ad texts for META platform for them.\n\nYou will be given the following:\n\n{\n  \\“Ad Text type\\“: \\“\\”,\n  \\“Product or Service Name\\“: \\“\\”,\n  \\“Product or Service Description\\“: \\“\\”,\n  \\“Tone\\“: \\“\\”,\n  \\“Language\\“: \\“\\”,\n  \\“Target Audience\\“: \\“\\”,\n  \\“Call to Action\\“: \\“\\”,\n  \\“Desired Performance\\“: \\“\\”\n}\n\nAnd you will output the following, with the exact same JSON structure. You will ONLY output JSON and nothing else. Remember, you will write like a seasoned copywriter with conversion performance in mind. Always output in English.\n\n{\n  \\“Ad Text\\“: \\“\\”,\n  \\“Predicted CTR\\“: \\“\\”\n}
+    """
+    user_prompt = """
+    {"Ad Text": "Join the YMCA of Greater Boston with a $0 join fee and support the community by donating any amount. Membership includes access to state-of-the-art equipment, facilities, and pools, as well as a variety of group exercise and water exercise classes. Plus, enjoy two free personal training sessions and up to 50% off on youth programs and camps.","Predicted CTR": "0.44%"}
+    """
 
-        user_prompt = input(f"{Fore.GREEN}Enter user prompt: {Style.RESET_ALL}")
-
-        response, tokens_per_second = llm.generate_response(system_prompt, user_prompt)
-
-        print(f"\n{Fore.BLUE}System:{Style.RESET_ALL} {system_prompt}")
-        print(f"{Fore.GREEN}User:{Style.RESET_ALL} {user_prompt}")
-        print(f"{Fore.YELLOW}Assistant:{Style.RESET_ALL} {response}")
-        print(f"{Fore.CYAN}Tokens per second:{Style.RESET_ALL} {tokens_per_second:.2f}")
+    response = generator(system_prompt, user_prompt)
+    print(response)
