@@ -15,7 +15,7 @@ class TransformerTextGenerator:
 
     def __init__(
             self,
-            model_id: str = "meta-llama/Meta-Llama-3-8B-Instruct",
+            model_id: str = "meta-llama/Meta-Llama-3.1-8B",
             load_in_4bit: bool = False,
             low_cpu_mem: bool = False,
             lora_path: Optional[str] = None):
@@ -35,7 +35,8 @@ class TransformerTextGenerator:
         self.low_cpu_mem = low_cpu_mem
         self.lora_path = lora_path
 
-        self._load_model()
+        if self.model is None:
+            self._load_model()
 
     def _load_model(self) -> None:
         """
@@ -93,23 +94,5 @@ class TransformerTextGenerator:
                 top_p=top_p,
             )
 
-        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-
-# Example usage:
-if __name__ == "__main__":
-    generator = TransformerTextGenerator(
-        model_id="/mnt/adllm/models/Meta-Llama-3.1-8B-Instruct",
-        load_in_4bit=True,
-        low_cpu_mem=True,
-        lora_path="/home/kadir/adllm/outputs/lora-out/")
-
-    system_prompt = """
-    You are a helpful ad copywriting assistant. You will take the user input and write ad texts for META platform for them.\n\nYou will be given the following:\n\n{\n  \\“Ad Text type\\“: \\“\\”,\n  \\“Product or Service Name\\“: \\“\\”,\n  \\“Product or Service Description\\“: \\“\\”,\n  \\“Tone\\“: \\“\\”,\n  \\“Language\\“: \\“\\”,\n  \\“Target Audience\\“: \\“\\”,\n  \\“Call to Action\\“: \\“\\”,\n  \\“Desired Performance\\“: \\“\\”\n}\n\nAnd you will output the following, with the exact same JSON structure. You will ONLY output JSON and nothing else. Remember, you will write like a seasoned copywriter with conversion performance in mind. Always output in English.\n\n{\n  \\“Ad Text\\“: \\“\\”,\n  \\“Predicted CTR\\“: \\“\\”\n}
-    """
-    user_prompt = """
-    {"Ad Text": "Join the YMCA of Greater Boston with a $0 join fee and support the community by donating any amount. Membership includes access to state-of-the-art equipment, facilities, and pools, as well as a variety of group exercise and water exercise classes. Plus, enjoy two free personal training sessions and up to 50% off on youth programs and camps.","Predicted CTR": "0.44%"}
-    """
-
-    response = generator(system_prompt, user_prompt)
-    print(response)
+        output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return output
