@@ -1,6 +1,6 @@
 <div align="center">
 <h2>
-    LllmRush: A Python package for fine-tuning and generating text with large language models
+    LllmRush: A Python package for generating text with large language models
 </h2>
 <div>
     <img width="500" alt="teaser" src="doc/assets/llm_logo.png">
