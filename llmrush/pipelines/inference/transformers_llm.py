@@ -8,8 +8,8 @@ from colorama import Fore, Style, init
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 # Suppress warnings
-os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
-os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # Initialize colorama for cross-platform colored terminal output
@@ -19,7 +19,12 @@ init()
 class LLMInference:
 
     def __init__(
-            self, model_name: str, gpu_ids: list = [0], use_4bit: bool = True, max_new_tokens: int = 100):
+        self,
+        model_name: str,
+        gpu_ids: list = [0],
+        use_4bit: bool = True,
+        max_new_tokens: int = 100,
+    ):
         self.model_name = model_name
         self.gpu_ids = gpu_ids
         self.use_4bit = use_4bit
@@ -29,9 +34,9 @@ class LLMInference:
 
     def load_model(self):
         if torch.cuda.is_available() and self.gpu_ids:
-            self.device = torch.device(f'cuda:{self.gpu_ids[0]}')
+            self.device = torch.device(f"cuda:{self.gpu_ids[0]}")
         else:
-            self.device = torch.device('cpu')
+            self.device = torch.device("cpu")
             print(f"{Fore.YELLOW}Using CPU for inference.{Style.RESET_ALL}")
 
         # Configure quantization
@@ -39,7 +44,7 @@ class LLMInference:
             load_in_4bit=self.use_4bit, bnb_4bit_compute_dtype=torch.float16)
 
         # Suppress stdout temporarily
-        with open(os.devnull, 'w') as devnull:
+        with open(os.devnull, "w") as devnull:
             old_stdout = os.dup(1)
             os.dup2(devnull.fileno(), 1)
             try:
@@ -47,7 +52,8 @@ class LLMInference:
                     self.model_name,
                     device_map=self.device,
                     quantization_config=quantization_config,
-                    torch_dtype=torch.float16)
+                    torch_dtype=torch.float16,
+                )
                 self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             finally:
                 os.dup2(old_stdout, 1)
@@ -74,7 +80,16 @@ class LLMInference:
                           system_prompt: str,
                           user_prompt: str,
                           do_sample: bool = True) -> tuple[str, float]:
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_prompt
+            },
+        ]
 
         inputs = self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt")
         input_ids = inputs.to(self.device)
@@ -93,7 +108,8 @@ class LLMInference:
                 do_sample=do_sample,
                 max_new_tokens=self.max_new_tokens,
                 pad_token_id=self.tokenizer.pad_token_id,
-                eos_token_id=self.tokenizer.eos_token_id)
+                eos_token_id=self.tokenizer.eos_token_id,
+            )
         end_time = time.time()
 
         response = self.tokenizer.decode(generated_ids[0, input_length:], skip_special_tokens=True)
@@ -113,7 +129,7 @@ if __name__ == "__main__":
 
     while True:
         system_prompt = input(f"\n{Fore.BLUE}Enter system prompt (or 'quit' to exit): {Style.RESET_ALL}")
-        if system_prompt.lower() == 'quit':
+        if system_prompt.lower() == "quit":
             break
 
         user_prompt = input(f"{Fore.GREEN}Enter user prompt: {Style.RESET_ALL}")

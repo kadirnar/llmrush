@@ -1,13 +1,12 @@
 from typing import List, Optional
+
 from llama_cpp import Llama
 
 
 # A wrapper class for the Llama language model using llama_cpp.
 class LlamaCppModel:
 
-    def load_model(
-        self, model_path: str, n_gpu_layers: int, seed: Optional[int], n_ctx: int
-    ) -> Llama:
+    def load_model(self, model_path: str, n_gpu_layers: int, seed: Optional[int], n_ctx: int) -> Llama:
         """
         Load the Llmcpp model with specified parameters.
 
@@ -20,9 +19,7 @@ class LlamaCppModel:
         Returns:
             Llama: An instance of the Llama model.
         """
-        return Llama(
-            model_path=model_path, n_gpu_layers=n_gpu_layers, seed=seed, n_ctx=n_ctx
-        )
+        return Llama(model_path=model_path, n_gpu_layers=n_gpu_layers, seed=seed, n_ctx=n_ctx)
 
     # Initialize the LlamaCppModel class and load the model.
     def __init__(
@@ -34,13 +31,12 @@ class LlamaCppModel:
     ):
         """
         model_path (str): Path to the model file.
-        n_gpu_layers (int): Number of GPU layers to use. -1 means use all available. Defaults to -1.
-        seed (Optional[int]): Seed for random number generation. Defaults to None.
-        n_ctx (int): Size of the context window. Defaults to 2048.
+
+        n_gpu_layers (int): Number of GPU layers to use. -1 means use all available. Defaults to -1. seed
+        (Optional[int]): Seed for random number generation. Defaults to None. n_ctx (int): Size of the context
+        window. Defaults to 2048.
         """
-        self.llm = Llama(
-            model_path=model_path, n_gpu_layers=n_gpu_layers, seed=seed, n_ctx=n_ctx
-        )
+        self.llm = Llama(model_path=model_path, n_gpu_layers=n_gpu_layers, seed=seed, n_ctx=n_ctx)
 
     # Generate text based on the given prompt.
     def generate(
@@ -51,10 +47,10 @@ class LlamaCppModel:
         echo: bool = False,
     ) -> dict:
         """
-            prompt (str): The input prompt for text generation.
-            max_tokens (Optional[int]): Maximum number of tokens to generate. If None, generates up to the end of the context window.
-            stop (Optional[List[str]]): List of strings that will stop the generation when encountered.
-            echo (bool): Whether to echo the prompt in the output. Defaults to False.
+        Prompt (str): The input prompt for text generation. max_tokens (Optional[int]): Maximum number of
+        tokens to generate. If None, generates up to the end of the context window. stop
+        (Optional[List[str]]): List of strings that will stop the generation when encountered. echo (bool):
+        Whether to echo the prompt in the output. Defaults to False.
 
         Returns:
             dict: The output from the language model.
