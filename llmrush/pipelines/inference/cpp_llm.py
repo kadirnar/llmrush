@@ -1,9 +1,5 @@
 import torch
-from colorama import Fore, Style, init
 from llama_cpp import LlamaForCausalLM, LlamaTokenizer
-
-# Initialize
-init()
 
 
 class LlamaInference:
@@ -36,17 +32,3 @@ class LlamaInference:
         # Decode the output tokens to text
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         return response
-
-
-# Usage example
-if __name__ == "__main__":
-    model_name = "llama-7b"
-    llm = LlamaInference(model_name=model_name, device="cuda")
-
-    while True:
-        prompt = input(f"\n{Fore.BLUE}Enter prompt (or 'quit' to exit): {Style.RESET_ALL}")
-        if prompt.lower() == "quit":
-            break
-
-        response = llm.generate_response(prompt)
-        print(f"{Fore.YELLOW}Response:{Style.RESET_ALL} {response}")
