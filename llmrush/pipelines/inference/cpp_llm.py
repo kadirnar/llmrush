@@ -1,15 +1,14 @@
 import torch
-from llama_cpp import LlamaTokenizer, LlamaForCausalLM
 from colorama import Fore, Style, init
+from llama_cpp import LlamaForCausalLM, LlamaTokenizer
 
 # Initialize
 init()
 
 
 class LlamaInference:
-    def __init__(
-        self, model_name: str, device: str = "cuda", max_new_tokens: int = 100
-    ):
+
+    def __init__(self, model_name: str, device: str = "cuda", max_new_tokens: int = 100):
         self.model_name = model_name
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.max_new_tokens = max_new_tokens
@@ -45,9 +44,7 @@ if __name__ == "__main__":
     llm = LlamaInference(model_name=model_name, device="cuda")
 
     while True:
-        prompt = input(
-            f"\n{Fore.BLUE}Enter prompt (or 'quit' to exit): {Style.RESET_ALL}"
-        )
+        prompt = input(f"\n{Fore.BLUE}Enter prompt (or 'quit' to exit): {Style.RESET_ALL}")
         if prompt.lower() == "quit":
             break
 
