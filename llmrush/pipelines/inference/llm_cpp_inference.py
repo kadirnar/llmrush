@@ -1,6 +1,8 @@
 from llama_cpp import Llama
 
+
 class LlamaModel:
+
     def __init__(self, model_path, n_gpu_layers):
         """
         Initialize and load the Llama model.
@@ -8,7 +10,7 @@ class LlamaModel:
         Args:
             model_path (str): Path to the model file.
         """
-        self.llm = Llama(model_path=model_path,n_gpu_layers=n_gpu_layers)
+        self.llm = Llama(model_path=model_path, n_gpu_layers=n_gpu_layers)
 
     def generate(self, prompt, max_tokens):
         """
